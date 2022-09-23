@@ -48,10 +48,10 @@ def get_list_id_from_name(api_key, token, board_name, list_name):
                 board_list = board['lists']
 
         # get list id from board lists
-        l_id = [b_list['id'] for b_list in board_list if b_list['name'] == list_name]
+        list_id = [b_list['id'] for b_list in board_list if b_list['name'] == list_name]
 
         # return list id as a str
-        return l_id[0]
+        return list_id[0]
 
     elif get_response.status_code == 401: # incorrect credentials
         print("You do not have the required permissions or wrong credentials")

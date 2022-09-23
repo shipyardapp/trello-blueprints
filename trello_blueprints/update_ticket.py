@@ -26,9 +26,9 @@ def get_args():
     parser.add_argument('--id-members', dest='id_members', required=False)
     parser.add_argument('--start-date', dest='start_date', required=False)
     parser.add_argument('--due-date', dest='due_date', required=False)
+    parser.add_argument('--custom-json', dest='custom_json', required=False)
     args = parser.parse_args()
     return args
-
 
 
 def update_ticket(api_key, token, card_id, query_data):
@@ -68,7 +68,7 @@ def update_ticket(api_key, token, card_id, query_data):
         print("an Unknown Error has occured when attempting your request:",
               f"{response.text}")
         sys.exit(exit_codes.UNKNOWN_ERROR)
-    
+
 
 def main():
     args = get_args()
@@ -86,6 +86,9 @@ def main():
         query_data['name'] = args.name
     if args.description:
         query_data['desc'] = args.description
+    if args.custom_json:
+        query_data.update(args.description)
+    
     card_data = update_ticket(
             args.api_key, 
             args.access_token, 

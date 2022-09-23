@@ -99,3 +99,7 @@ def main():
         artifact_subfolder_paths['responses'],
         f'update_ticket_{card_id}_response.json')
     shipyard.files.write_json_to_file(card_data, card_data_filename)
+
+
+if __name__ == "__main__":
+    main()

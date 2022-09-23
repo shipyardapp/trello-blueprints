@@ -59,8 +59,8 @@ def get_list_id_from_name(api_key, token, board_name, list_name):
 
     else: # Some other error
         print(
-            f"Unknown HTTP Status: {response.status_code} occured during request.",
-            f"response: {response.text}"
+            f"Unknown HTTP Status: {get_response.status_code} occured during request.",
+            f"response: {get_response.text}"
         )
         sys.exit(exit_codes.UNKNOWN_ERROR) 
 

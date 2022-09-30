@@ -162,7 +162,6 @@ def create_ticket(api_key, token, id_list, name, description, payload):
     }
     # add additional fields to the query
     query.update(payload)
-    print(query)
     response = requests.post(url,headers=headers, json=query)
 
     if response.status_code == 200:

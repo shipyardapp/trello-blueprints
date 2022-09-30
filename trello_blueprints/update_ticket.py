@@ -28,7 +28,6 @@ def get_args():
     parser.add_argument('--board-name', dest='board_name', required=False)
     parser.add_argument('--list-name', dest='list_name', required=False)
     parser.add_argument('--start-date', dest='start_date', required=False)
-    parser.add_argument('--start-date', dest='start_date', required=False)
     parser.add_argument('--due-date', dest='due_date', required=False)
     parser.add_argument('--due-complete', dest='due_complete', required=False)
     parser.add_argument('--members', dest='members_list', required=False)
@@ -110,7 +109,7 @@ def get_member_ids_from_name(api_key, token, board_id, members):
 
 def get_list_id_from_name(api_key, token, board_id, list_name):
     """Gets the Trello List id given the Name of the List and the board it's from"""
-    get_url = f"https://api.trello.com/1/boards/{id}/lists"
+    get_url = f"https://api.trello.com/1/boards/{board_id}/lists"
     params = {
         'key': api_key,
         'token': token,
@@ -141,7 +140,7 @@ def update_ticket(api_key, token, card_id, query_data):
     https://developer.atlassian.com/cloud/trello/rest/api-group-cards/#api-cards-id-put
     """
     
-    url = "https://api.trello.com/1/cards/{card_id}"
+    url = f"https://api.trello.com/1/cards/{card_id}"
 
     headers = {
        "Accept": "application/json"
@@ -153,8 +152,7 @@ def update_ticket(api_key, token, card_id, query_data):
     }
     # add additional query data
     query.update(query_data)
-
-    response = requests.put(url,headers=headers, data=query)
+    response = requests.put(url, headers=headers, data=query)
 
     if response.status_code == 200:
         print(f"Card with id {card_id} updated successfully")
@@ -165,12 +163,12 @@ def update_ticket(api_key, token, card_id, query_data):
         sys.exit(exit_codes.INVALID_CREDENTIALS)
 
     elif response.status_code == 400: # Bad Request
-        print("Trello responded with Bad Request Error. ",
+        print("Trello Update responded with Bad Request Error. ",
               f"Response message: {response.text}")
         sys.exit(exit_codes.BAD_REQUEST)
 
     else: # Some other error
-        print("an Unknown Error has occured when attempting your request:",
+        print("an Unknown Error has occured when attempting your update request:",
               f"{response.text}")
         sys.exit(exit_codes.UNKNOWN_ERROR)
 
@@ -246,22 +244,25 @@ def main():
     board_id = card_data['idBoard']
     card_id = card_data['id']
 
-    # get labels and members
-    label_ids = get_label_ids_from_name(api_key, access_token, 
-                                          board_id, literal_eval(args.labels))
-    member_ids = get_label_ids_from_name(api_key, access_token, 
-                                          board_id, literal_eval(args.members))
     # create payload dict and add data to it
     query_data = {}
+    if args.name:
+        query_data['name'] = args.name
+    if args.description:
+        query_data['description'] = args.description
     if args.start_date:
         query_data['start'] = convert_date_to_trello(args.start_date)
     if args.due_date:
         query_data['due'] = convert_date_to_trello(args.due_date)  
     if args.due_complete:
         query_data['dueComplete'] = args.due_complete
-    if member_ids:
+    if args.members_list:
+        member_ids = get_label_ids_from_name(api_key, access_token, 
+                                          board_id, literal_eval(args.members_list))
         query_data['idMembers'] = member_ids
-    if label_ids:
+    if args.labels_list:
+        label_ids = get_label_ids_from_name(api_key, access_token, 
+                                          board_id, literal_eval(args.labels_list))
         query_data['idLabels'] = label_ids
     if args.url_source:
         query_data['urlSource'] = args.url_source
@@ -281,33 +282,34 @@ def main():
     updated_data = update_ticket(
             args.api_key, 
             args.access_token, 
-            args.card_id,
+            card_shortlink,
             query_data
     )
     # add attachment logic
-    if source_file_name_match_type == 'regex_match':
-        all_local_files = shipyard.files.find_all_local_file_names(
-            source_folder_name)
-        matching_file_names = shipyard.files.find_all_file_matches(
-            all_local_files, re.compile(source_file_name))
-        for index, file_name in enumerate(matching_file_names):
+    if args.source_file_name:
+        if source_file_name_match_type == 'regex_match':
+            all_local_files = shipyard.files.find_all_local_file_names(
+                source_folder_name)
+            matching_file_names = shipyard.files.find_all_file_matches(
+                all_local_files, re.compile(source_file_name))
+            for index, file_name in enumerate(matching_file_names):
+                attach_file_to_card(api_key, 
+                                    access_token, 
+                                    card_id,
+                                    file_name)
+        else:
+            source_file_path = shipyard.files.combine_folder_and_file_name(
+                source_folder_name, source_file_name)
             attach_file_to_card(api_key, 
                                 access_token, 
                                 card_id,
-                                file_name)
-    else:
-        source_file_path = shipyard.files.combine_folder_and_file_name(
-            source_folder_name, source_file_name)
-        attach_file_to_card(api_key, 
-                            access_token, 
-                            card_id,
-                            source_file_path)
+                                source_file_path)
     
     # save card to responses
     card_data_filename = shipyard.files.combine_folder_and_file_name(
         artifact_subfolder_paths['responses'],
         f'update_ticket_{card_id}_response.json')
-    shipyard.files.write_json_to_file(card_data, card_data_filename)
+    shipyard.files.write_json_to_file(updated_data, card_data_filename)
 
 
 if __name__ == "__main__":

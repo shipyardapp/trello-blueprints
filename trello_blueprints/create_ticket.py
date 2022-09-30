@@ -108,7 +108,7 @@ def get_member_ids_from_name(api_key, token, board_id, members):
 
 def get_list_id_from_name(api_key, token, board_id, list_name):
     """Gets the Trello List id given the Name of the List and the board it's from"""
-    get_url = f"https://api.trello.com/1/boards/{id}/lists"
+    get_url = f"https://api.trello.com/1/boards/{board_id}/lists"
     params = {
         'key': api_key,
         'token': token,
@@ -135,7 +135,7 @@ def get_list_id_from_name(api_key, token, board_id, list_name):
 
     else: # Some other error
         print(
-            f"Unknown HTTP Status: {get_response.status_code} occured during request.",
+            f"Unknown HTTP Status: {get_response.status_code} occured during GET LIST ID.",
             f"response: {get_response.text}"
         )
         sys.exit(exit_codes.UNKNOWN_ERROR) 
@@ -162,7 +162,7 @@ def create_ticket(api_key, token, id_list, name, description, payload):
     }
     # add additional fields to the query
     query.update(payload)
-
+    print(query)
     response = requests.post(url,headers=headers, json=query)
 
     if response.status_code == 200:
@@ -235,11 +235,6 @@ def main():
     # get list id
     list_id = get_list_id_from_name(api_key, access_token, 
                     board_id, list_name)
-    # get labels and members
-    label_ids = get_label_ids_from_name(api_key, access_token, 
-                                          board_id, literal_eval(args.labels))
-    member_ids = get_label_ids_from_name(api_key, access_token, 
-                                          board_id, literal_eval(args.members))
 
     # create payload dict and add data to it
     payload = {}
@@ -249,9 +244,14 @@ def main():
         payload['due'] = convert_date_to_trello(args.due_date)  
     if args.due_complete:
         payload['dueComplete'] = args.due_complete
-    if member_ids:
+    if args.members_list:
+        member_ids = get_label_ids_from_name(api_key, access_token, 
+                                          board_id, literal_eval(args.members_list))
         payload['idMembers'] = member_ids
-    if label_ids:
+    if args.labels_list:
+        # get labels and members
+        label_ids = get_label_ids_from_name(api_key, access_token, 
+                                          board_id, literal_eval(args.labels_list))
         payload['idLabels'] = label_ids
     if args.url_source:
         payload['urlSource'] = args.url_source
@@ -274,23 +274,24 @@ def main():
     card_id = card_data['id']
     
     # add attachments
-    if source_file_name_match_type == 'regex_match':
-        all_local_files = shipyard.files.find_all_local_file_names(
-            source_folder_name)
-        matching_file_names = shipyard.files.find_all_file_matches(
-            all_local_files, re.compile(source_file_name))
-        for index, file_name in enumerate(matching_file_names):
+    if args.source_file_name:
+        if source_file_name_match_type == 'regex_match':
+            all_local_files = shipyard.files.find_all_local_file_names(
+                source_folder_name)
+            matching_file_names = shipyard.files.find_all_file_matches(
+                all_local_files, re.compile(source_file_name))
+            for index, file_name in enumerate(matching_file_names):
+                attach_file_to_card(api_key, 
+                                    access_token, 
+                                    card_id,
+                                    file_name)
+        else:
+            source_file_path = shipyard.files.combine_folder_and_file_name(
+                source_folder_name, source_file_name)
             attach_file_to_card(api_key, 
                                 access_token, 
                                 card_id,
-                                file_name)
-    else:
-        source_file_path = shipyard.files.combine_folder_and_file_name(
-            source_folder_name, source_file_name)
-        attach_file_to_card(api_key, 
-                            access_token, 
-                            card_id,
-                            source_file_path)
+                                source_file_path)
     
     # save card to responses
     card_data_filename = shipyard.files.combine_folder_and_file_name(
